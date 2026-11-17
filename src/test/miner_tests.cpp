@@ -966,4 +966,18 @@ BOOST_AUTO_TEST_CASE(block_template_manager)
     BOOST_CHECK(block_template->vTxSigOpsCost.empty());
 }
 
+// The mining interface can be used on early startup, before the genesis block
+// is connected.
+BOOST_FIXTURE_TEST_CASE(checkBlock_no_tip, ChainTestingSetup)
+{
+    WITH_LOCK(::cs_main, m_node.chainman->InitializeChainstate(m_node.mempool.get()));
+    BOOST_REQUIRE(!WITH_LOCK(::cs_main, return m_node.chainman->ActiveChain().Tip()));
+
+    auto mining{interfaces::MakeMining(m_node, /*wait_loaded=*/false)};
+    std::string reason;
+    std::string debug;
+    BOOST_REQUIRE(!mining->checkBlock(CBlock{}, {}, reason, debug));
+    BOOST_REQUIRE_EQUAL(reason, "inconclusive-not-best-prevblk");
+}
+
 BOOST_AUTO_TEST_SUITE_END()
